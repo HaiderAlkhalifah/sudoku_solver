@@ -185,9 +185,9 @@ def backtracking_forward_checking(board, metrics, update_gui=None):
     return False
 
 
-# AC-3 Algorithm Implementation
+# # AC-3 this part is removed 
 
-
+#----------------------------------------------------------------------------------------------------------
 # def get_peers(row: int, col: int) -> Set[Tuple[int, int]]:
 #     """Get all cells that share a row, column, or subgrid with (row, col)."""
 #     peers = set()
@@ -267,14 +267,17 @@ def backtracking_forward_checking(board, metrics, update_gui=None):
     
 #     return True
 
-# def backtracking_ac3(board: List[List[int]], metrics: Dict, update_gui=None) -> bool:
-#     """Solve Sudoku using backtracking after applying AC-3."""
-#     # First apply AC-3 to reduce the search space
-#     if not ac3(board):
-#         return False
+def backtracking_ac3(board: List[List[int]], metrics: Dict, update_gui=None) -> bool:
+    """Solve Sudoku using backtracking after applying AC-3."""
+    # First apply AC-3 to reduce the search space
+    if not ac3(board):
+        return False
     
-#     # Proceed with regular backtracking
-#     return backtracking(board, metrics, update_gui)
+    # Proceed with regular backtracking
+    return backtracking(board, metrics, update_gui)
+
+#----------------------------------------------this part is removed------------------------------------------------------------
+
 
 
 # Hybrid Algorithm Implementation
