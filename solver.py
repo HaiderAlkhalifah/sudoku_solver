@@ -108,74 +108,81 @@ def backtracking_mrv(board: List[List[int]], metrics: Dict, update_gui=None) -> 
 # Forward Checking Implementation
 
 
-# forward checking prunes invalid values form the empty cells.. returns false if not able to solve the cell
-def forward_checking(board: List[List[int]], row: int, col: int, num: int) -> bool:
-    # check all cells in the same row
-    for i in range(9):
-        if board[row][i] == 0:  # checks only the empty cells
-            has_valid = False
-            for n in range(1, 10): 
-                if n != num and is_valid(board, row, i, n):
-                    has_valid = True
-                    break  # at least there is one valid number
-            if not has_valid:
-                return False  
-
-    # check all cells in the same column
-    for i in range(9):
-        if board[i][col] == 0: 
+# forward checking prunes invalid values from empty cells.. returns false if not able to solve the grid
+def forward_checking(board, row, col, num):
+    # Temporarily place the number to check its impact
+    board[row][col] = num
+    
+    # check all unassigned cells in the same row
+    for k in range(9):
+        if k != col and board[row][k] == 0:
             has_valid = False
             for n in range(1, 10):
-                if n != num and is_valid(board, i, col, n):
+                if is_valid(board, row, k, n): 
                     has_valid = True
                     break
             if not has_valid:
-                return False
-
-    # Check all cells in the 3x3 subgrid
+                board[row][col] = 0  # restore the board state
+                return False  # no valid number left for this cell
+    
+    # check all unassigned cells in the same column
+    for i in range(9):
+        if i != row and board[i][col] == 0:
+            has_valid = False
+            for n in range(1, 10):
+                if is_valid(board, i, col, n):
+                    has_valid = True
+                    break
+            if not has_valid:
+                board[row][col] = 0  # restore the board
+                return False  # no valid number left for this cell
+    
+    # check all unassigned cells in the same subgrid
     start_row, start_col = 3 * (row // 3), 3 * (col // 3)
     for i in range(3):
         for j in range(3):
-            if board[start_row + i][start_col + j] == 0: 
+            r, c = start_row + i, start_col + j
+            if (r != row or c != col) and board[r][c] == 0:
                 has_valid = False
                 for n in range(1, 10):
-                    if n != num and is_valid(board, start_row + i, start_col + j, n):
+                    if is_valid(board, r, c, n):
                         has_valid = True
                         break
                 if not has_valid:
-                    return False
-
+                    board[row][col] = 0  # restore the board
+                    return False  # no valid number left for this cell
+    
+    # Restore the board
+    board[row][col] = 0
     return True
 
-def backtracking_forward_checking(board: List[List[int]], metrics: Dict, update_gui=None) -> bool:
-   
+def backtracking_forward_checking(board, metrics, update_gui=None):
     empty = find_empty(board)
     if not empty:
         return True  
     
     row, col = empty
-    for num in range(1, 10):  
-        if is_valid(board, row, col, num):  
+    for num in range(1, 10):
+        if is_valid(board, row, col, num):
+            # check if this choice leads to a solvable state
             if not forward_checking(board, row, col, num):
-                continue  # skip this number if it is not solvable
-
+                metrics["pruned"] = metrics.get("pruned", 0) + 1
+                continue  # Skip this number if it is unsolvable state
+            
             board[row][col] = num
-            metrics["steps"] += 1
-
+            metrics["steps"] = metrics.get("steps", 0) + 1
+            
             if update_gui:
-                update_gui(row, col,num)
+                update_gui(row, col, num)
                 pygame.time.delay(20)
-
-            # recurse call to solve the rest
+            
             if backtracking_forward_checking(board, metrics, update_gui):
                 return True
-
-            # backtrack if could not find solution
+            
             board[row][col] = 0
-            metrics["backtracking"] += 1
-
+            metrics["backtracking"] = metrics.get("backtracking", 0) + 1
+    
     return False
-
 
 
 # AC-3 Algorithm Implementation
