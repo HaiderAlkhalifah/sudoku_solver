@@ -1,5 +1,13 @@
 import pygame
 import sys
+from solver import (
+    backtracking,
+    backtracking_mrv,
+    backtracking_forward_checking,
+    backtracking_ac3,
+    hybrid_solver
+)
+
 
 # ------------------------------
 # 1. Initialize Pygame Settings
@@ -34,6 +42,7 @@ original_board = [
     [0, 0, 2, 0, 0, 0, 0, 0, 3],
     [3, 0, 0, 0, 1, 0, 0, 0, 0]
 ]
+
 board = [row[:] for row in original_board]  # Create a deep copy
 fixed_cells = [[board[i][j] != 0 for j in range(COLS)] for i in range(ROWS)]
 status_message = "Select a cell and use number keys to input values"
@@ -157,12 +166,7 @@ def handle_key_press(key):
         
     # Handle number inputs (1-9)
     if pygame.K_1 <= key <= pygame.K_9:
-        number = key - pygame.K_0  # Convert key code to number
-        board[row][col] = number
-        status_message = f"Entered {number} at {row+1},{col+1}"
-    
-    # Delete/backspace/0 clears the cell
-    elif key in (pygame.K_DELETE, pygame.K_BACKSPACE, pygame.K_0):
+        number = key - pygame.K_0  # Convebacktracking_ac3K_BACKSPACE, pygame.K_0):
         board[row][col] = 0
         status_message = f"Cleared cell {row+1},{col+1}"
 
@@ -198,7 +202,7 @@ def get_button_rects():
     button_name_mapping = {
         "Backtracking": "backtracking",
         "MRV": "backtracking_mrv",
-        "Forward Checking": "backtracking_forward_checking",
+        "Forward Checking": "forward_checking",
         "AC-3": "backtracking_ac3",
         "Hybrid": "hybrid_solver",
         "Reset": "Reset"
@@ -242,7 +246,8 @@ def gameQuit():
 def gameInitialize():
     pygame.init()
 
-    global screen, number_font, button_font, status_font
+    global screen, number_font, button_font, status_font,active_algorithm
+    active_algorithm = None
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption("Sudoku Solver - Dark Mode")
 
@@ -262,7 +267,28 @@ def gameInitialize():
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                handle_mouse_click(event.pos, buttons)
+                    handle_mouse_click(event.pos, buttons)
+    # After a button click, check if a solver should run
+                    algorithm_to_run = execute_algorithm()
+                    if algorithm_to_run and algorithm_to_run != "Reset":  
+                        metrics = {"steps": 0, "backtracking": 0, "backtracks": 0}
+                        board_copy = [row[:] for row in board]  # Copy board to avoid mutating fixed cells
+                        update_fn = visualize_solution_step # To track changes with every algorthim 
+
+                        # Call appropriate solver
+                        if algorithm_to_run == "backtracking":
+                            backtracking(board_copy, metrics, update_fn)
+                        elif algorithm_to_run == "backtracking_mrv":
+                            backtracking_mrv(board_copy, metrics, update_fn)
+                        elif algorithm_to_run == "forward_checking":
+                            backtracking_forward_checking(board_copy, metrics, update_fn)
+                        elif algorithm_to_run == "backtracking_ac3" :
+                            backtracking_ac3(board_copy,metrics,update_fn)
+                        elif algorithm_to_run == "hybrid_solver":
+                            hybrid_solver(board_copy,metrics,update_fn)
+
+                        status_message = f"{active_algorithm} completed - Steps: {metrics['steps']}, Backtracks: {metrics.get('backtracking', metrics.get('backtracks', 0))}"
+                        active_algorithm = None  # Clear after execution
             elif event.type == pygame.KEYDOWN:
                 handle_key_press(event.key)
 
@@ -273,21 +299,12 @@ def gameInitialize():
 
 # This function would be called by external algorithm implementations
 def visualize_solution_step(row, col, value):
-    """
-    Visualize a single step of the solution process.
-    This function would be called by the algorithm implementations.
-    """
     update_cell(row, col, value)
 
 # Function to execute the selected algorithm
 def execute_algorithm():
-    """
-    This function would be called to execute the currently selected algorithm.
-    It returns the name of the algorithm to be called externally.
-    """
     if active_algorithm is None:
         return None
-    
     algorithm_name = button_name_mapping[active_algorithm]
     return algorithm_name
 

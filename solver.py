@@ -46,9 +46,9 @@ def backtracking(board: List[List[int]], metrics: Dict, update_gui=None) -> bool
             metrics["steps"] += 1 # track the progress
             
             # highlight the currnt cell being process
-            # if update_gui: 
-            #     update_gui(row, col)
-            #     pygame.time.delay(20)
+            if update_gui: 
+                update_gui(row, col,num)
+                pygame.time.delay(20)
             
             # recursive call to going DFS to find the solution
             if backtracking(board, metrics, update_gui):
@@ -92,9 +92,9 @@ def backtracking_mrv(board: List[List[int]], metrics: Dict, update_gui=None) -> 
             board[row][col] = num
             metrics["steps"] += 1
             
-            # if update_gui:
-            #     update_gui(row, col)
-            #     pygame.time.delay(20)
+            if update_gui:
+                update_gui(row, col,num)
+                pygame.time.delay(20)
 
             if backtracking_mrv(board, metrics, update_gui):
                 return True
@@ -162,9 +162,9 @@ def backtracking_forward_checking(board: List[List[int]], metrics: Dict, update_
             board[row][col] = num
             metrics["steps"] += 1
 
-            # if update_gui:
-            #     update_gui(row, col)
-            #     pygame.time.delay(20)
+            if update_gui:
+                update_gui(row, col,num)
+                pygame.time.delay(20)
 
             # recurse call to solve the rest
             if backtracking_forward_checking(board, metrics, update_gui):
