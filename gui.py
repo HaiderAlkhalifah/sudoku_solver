@@ -4,15 +4,49 @@ import pygame
 # 1. Initialize Pygame Settings
 # ------------------------------
 
-# TODO: Initialize Pygame and set up screen dimensions (e.g., 540x600)
-# TODO: Define colors (WHITE, BLACK, GRAY, BLUE, LIGHT_BLUE)
-# TODO: Set fonts for numbers and buttons
+WIDTH, HEIGHT = 540, 600  # 540x540 grid + 60px space for buttons/info
+ROWS, COLS = 9, 9 
+CELL_SIZE = WIDTH // COLS
+
+# Colors
+BLACK = (0, 0, 0)
+GRAY = (150, 150, 150)
+RED = (255, 0, 0)
+
+def gameInitialize():
+    pygame.init()
+
+    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    pygame.display.set_caption("Sudoku_CSP")
+
+    number_font = pygame.font.SysFont("arial", 40)
+    button_font = pygame.font.SysFont("arial", 30)
+    clock = pygame.time.Clock()
+
+    running = True
+    while running:
+        screen.fill(BLACK)
+        draw_board(screen)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+
+            # TODO: Handle input here
+
+        pygame.display.flip()
+        clock.tick(60)
 
 # ------------------------------
 # 2. Drawing Functions
 # ------------------------------
 
-def draw_board(screen, board, selected_cell, metrics):
+def draw_board(screen):
+    for i in range(ROWS + 1):
+        thickness = 4 if i % 3 == 0 else 1
+        pygame.draw.line(screen, GRAY, (0, i * CELL_SIZE), (WIDTH, i * CELL_SIZE), thickness)
+        pygame.draw.line(screen, GRAY, (i * CELL_SIZE, 0), (i * CELL_SIZE, WIDTH), thickness)
+
     """
     Draw the Sudoku grid and numbers.
     TODO:
@@ -75,3 +109,9 @@ def get_button_rects():
     TODO: Define precise coordinates for each algorithm button
     """
     pass
+
+def gameQuit():
+    pygame.quit()
+    sys.exit()
+
+gameInitialize()
