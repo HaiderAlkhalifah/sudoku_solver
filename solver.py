@@ -1,166 +1,408 @@
 from typing import List, Tuple, Optional, Dict
 import time
+import pygame
 
-# ------------------------------
-# 1. Utility Functions
-# ------------------------------
+
 
 def is_valid(board: List[List[int]], row: int, col: int, num: int) -> bool:
-    """
-    Check if placing 'num' at position (row, col) is valid.
-    TODO: Implement Sudoku rules for rows, columns, and 3x3 subgrids
-    """
-    pass  # Replace with validation logic
+    # Check for duplicates in the same row of col
+    for i in range(9):
+        if board[row][i] == num or board[i][col] == num:
+            return False
+        
+    # Check for duplicates in the same 3x3 grid
+    start_row, start_col = 3 * (row // 3), 3 * (col // 3)
+    for i in range(3):
+        for j in range(3):
+            if board[start_row + i][start_col + j] == num:
+                return False
+    return True
 
 def find_empty(board: List[List[int]]) -> Optional[Tuple[int, int]]:
-    """
-    Find the first empty cell (value 0) in the board.
-    Returns (row, col) or None if no empty cells exist.
-    TODO: Implement basic empty cell search
-    """
-    pass  # Replace with cell finding logic
+    # Findes the first empty cell valued 0 
+    for i in range(9):
+        for j in range(9):
+            if board[i][j] == 0:
+                return (i, j)
+    return None
 
-# ------------------------------
-# 2. Core Algorithm: Backtracking
-# ------------------------------
+
+# Core Algorithm: Backtracking
+
 
 def backtracking(board: List[List[int]], metrics: Dict, update_gui=None) -> bool:
-    """
-    Base Backtracking Algorithm
-    TODO:
-    1. Use find_empty() to get next empty cell
-    2. Try numbers 1-9 in order
-    3. Validate each number with is_valid()
-    4. Update GUI if update_gui function exists
-    5. Backtrack if solution fails
-    6. Track metrics: backtracks, steps, time
-    """
-    pass
+    
+    # Finding the next empty cell
+    empty = find_empty(board)
+    if not empty:
+        return True
+    
+    # testing 1 to 9 in the empty cell
+    row, col = empty
+    for num in range(1,10):
+        # Validating the tested number
+        if is_valid(board, row, col, num):
+            board[row][col] = num 
+            metrics["steps"] += 1 # track the progress
+            
+            # highlight the currnt cell being process
+            # if update_gui: 
+            #     update_gui(row, col)
+            #     pygame.time.delay(20)
+            
+            # recursive call to going DFS to find the solution
+            if backtracking(board, metrics, update_gui):
+                return True
+            
+            board[row][col] = 0
+            metrics["backtracking"] +=1 # track the number of backtrack
+    return False
+  
 
-# ------------------------------
-# 3. MRV Heuristic Implementation
-# ------------------------------
+
+# MRV Heuristic Implementation
+
+
 
 def find_mrv(board: List[List[int]]) -> Optional[Tuple[int, int]]:
-    """
-    Find cell with Minimum Remaining Values (MRV)
-    TODO:
-    1. For each empty cell, count possible valid numbers
-    2. Return cell with fewest valid options
-    """
-    pass
+    min_cell = None
+    min_options = 10 #starting with number that higher than 9
+   
+    for i in range(9):
+        for j in range(9):
+           # checking the empty cells
+            if board[i][j] == 0: 
+                # counting the valid numbers for the cell
+                options = sum(1 for num in range(1, 10) if is_valid(board, i, j, num))
+                if options < min_options:
+                    min_options = options
+                    min_cell = (i,j)
+    return min_cell
 
 def backtracking_mrv(board: List[List[int]], metrics: Dict, update_gui=None) -> bool:
-    """
-    Backtracking with MRV Heuristic
-    TODO:
-    1. Use find_mrv() instead of find_empty()
-    2. Follow same backtracking pattern
-    """
-    pass
 
-# ------------------------------
-# 4. Forward Checking Implementation
-# ------------------------------
+    # using find MRV
+    empty = find_mrv(board)
+    if not empty:
+        return True 
+    
+    row, col = empty
+    for num in range(1, 10):
+        if is_valid(board, row, col, num):
+            board[row][col] = num
+            metrics["steps"] += 1
+            
+            # if update_gui:
+            #     update_gui(row, col)
+            #     pygame.time.delay(20)
 
+            if backtracking_mrv(board, metrics, update_gui):
+                return True
+
+            board[row][col] = 0
+            metrics["backtracks"] += 1
+
+    return False
+
+
+# Forward Checking Implementation
+
+
+# forward checking prunes invalid values form the empty cells.. returns false if not able to solve the cell
 def forward_checking(board: List[List[int]], row: int, col: int, num: int) -> bool:
-    """
-    Forward Checking constraint propagation
-    TODO:
-    1. Track domains of unassigned cells
-    2. Remove num from domains of affected cells
-    3. Return False if any domain becomes empty
-    """
-    pass
+    # check all cells in the same row
+    for i in range(9):
+        if board[row][i] == 0:  # checks only the empty cells
+            has_valid = False
+            for n in range(1, 10): 
+                if n != num and is_valid(board, row, i, n):
+                    has_valid = True
+                    break  # at least there is one valid number
+            if not has_valid:
+                return False  
+
+    # check all cells in the same column
+    for i in range(9):
+        if board[i][col] == 0: 
+            has_valid = False
+            for n in range(1, 10):
+                if n != num and is_valid(board, i, col, n):
+                    has_valid = True
+                    break
+            if not has_valid:
+                return False
+
+    # Check all cells in the 3x3 subgrid
+    start_row, start_col = 3 * (row // 3), 3 * (col // 3)
+    for i in range(3):
+        for j in range(3):
+            if board[start_row + i][start_col + j] == 0: 
+                has_valid = False
+                for n in range(1, 10):
+                    if n != num and is_valid(board, start_row + i, start_col + j, n):
+                        has_valid = True
+                        break
+                if not has_valid:
+                    return False
+
+    return True
 
 def backtracking_forward_checking(board: List[List[int]], metrics: Dict, update_gui=None) -> bool:
-    """
-    Backtracking with Forward Checking
-    TODO:
-    1. Integrate forward_checking() during assignment
-    2. Skip paths with empty domains
-    """
-    pass
+   
+    empty = find_empty(board)
+    if not empty:
+        return True  
+    
+    row, col = empty
+    for num in range(1, 10):  
+        if is_valid(board, row, col, num):  
+            if not forward_checking(board, row, col, num):
+                continue  # skip this number if it is not solvable
 
-# ------------------------------
-# 5. AC-3 Algorithm Implementation
-# ------------------------------
+            board[row][col] = num
+            metrics["steps"] += 1
+
+            # if update_gui:
+            #     update_gui(row, col)
+            #     pygame.time.delay(20)
+
+            # recurse call to solve the rest
+            if backtracking_forward_checking(board, metrics, update_gui):
+                return True
+
+            # backtrack if could not find solution
+            board[row][col] = 0
+            metrics["backtracking"] += 1
+
+    return False
+
+
+
+# AC-3 Algorithm Implementation
+
+
 
 def ac3(board: List[List[int]]) -> bool:
-    """
-    AC-3 Algorithm for arc consistency
-    TODO:
-    1. Initialize queue with all arcs (cell pairs)
-    2. Process arcs and revise domains
-    3. Return False if any domain becomes empty
-    """
-    pass
+   def ac3(board):
+       
+    # building a queue of arcs (cell pairs (x,y)) wher x and y shars row, col, or subgrid
+    queue = []
+    for i in range(9):
+        for j in range(9):
+            for k in range(9):
+                for l in range(9):
+                    if board[i][j] == 0 and board[k][l] == 0:
+                        same_row = (i == k)
+                        same_col = (j == l)
+                        same_subgrid = (3*(i//3) <= k < 3*(i//3 + 1)) and (3*(j//3) <= l < 3*(j//3 + 1))
+                        if same_row or same_col or same_subgrid:
+                            queue.append(((i, j), (k, l)))
+    
+    while queue:
+        (x1, y1), (x2, y2) = queue.pop(0)
+        if revise(board, x1, y1, x2, y2):
+            # check if cell has no valid values left
+            if board[x1][y1] == 0:
+                has_valid = False
+                for n in range(1, 10):
+                    if is_valid(board, x1, y1, n):
+                        has_valid = True
+                        break
+                if not has_valid:
+                    return False  
+            
+            # adding the neighbors again to queue
+            for neighbor in get_neighbors(x1, y1):
+                if board[neighbor[0]][neighbor[1]] == 0:
+                    queue.append((neighbor, (x1, y1)))
+    
+    return True
+
+
+def revise(board, x1, y1, x2, y2):
+    revised = False
+    for num in range(1, 10):
+        #testing all possible values for X1 then if the num is valid for x1
+        if is_valid(board, x1, y1, num):
+            valid_for_neighbor = False
+            # chicking for a valid value for x2
+            for n in range(1, 10):
+                if n != num and is_valid(board, x2, y2, n):
+                    valid_for_neighbor = True
+                    break
+            if not valid_for_neighbor:
+                board[x1][y1] = 0 # removing the num from x1 domain
+                revised = True
+    return revised
+
+
+def get_neighbors(row, col):
+    neighbors = []
+    # Same column
+    for i in range(9):
+        if i != row:
+            neighbors.append((i, col))
+    # Same row
+    for i in range(9):
+        if i != col:
+            neighbors.append((row, i))
+    # Same subgrid
+    start_row = 3 * (row // 3)
+    start_col = 3 * (col // 3)
+    for i in range(3):
+        for j in range(3):
+            r = start_row + i
+            c = start_col + j
+            if r != row or c != col:
+                neighbors.append((r, c))
+    return neighbors
 
 def backtracking_ac3(board: List[List[int]], metrics: Dict, update_gui=None) -> bool:
-    """
-    Backtracking with AC-3 preprocessing
-    TODO:
-    1. Run ac3() before backtracking
-    2. Use reduced domains for solving
-    """
-    pass
+    ac3(board)
+    return backtracking(board, metrics, update_gui)
 
-# ------------------------------
-# 6. Hybrid Algorithm Implementation
-# ------------------------------
 
+# Hybrid Algorithm Implementation
 def hybrid_solver(board: List[List[int]], metrics: Dict, update_gui=None) -> bool:
-    """
-    Hybrid Algorithm: MRV + Forward Checking + AC-3
-    TODO:
-    1. Combine all three techniques
-    2. Optimize constraint propagation order
-    """
-    pass
+    ac3(board)
+    return backtracking_mrv(board, metrics, update_gui)
 
-# ------------------------------
-# 7. Metrics Collection System
-# ------------------------------
+
+# Metrics Collection System
 
 def initialize_metrics() -> Dict:
-    """
-    Initialize performance metrics dictionary
-    TODO: Track:
-    - algorithm name
-    - time taken
-    - backtracks count
-    - steps taken
-    """
-    return {}  # Replace with initialized metrics
+    return {
+        "algorithm": "",
+        "time": 0,
+        "backtracking": 0,
+        "steps": 0,
+        "solved": False
+    }
 
-# ------------------------------
-# 8. Test Cases & Validation
-# ------------------------------
-
+                  
+                  
+                  
 if __name__ == "__main__":
-    """
-    TODO: Add test cases for:
-    1. Sample puzzles from puzzles/ directory
-    2. All implemented algorithms
-    3. Performance comparison system
-    4. Solution validation checks
-    """
-    # Example test case
+    
+    
+    # Sample Puzzle (Easy)
     test_puzzle = [
-        [5,3,0,0,7,0,0,0,0],
-        [6,0,0,1,9,5,0,0,0],
-        [0,9,8,0,0,0,0,6,0],
-        [8,0,0,0,6,0,0,0,3],
-        [4,0,0,8,0,3,0,0,1],
-        [7,0,0,0,2,0,0,0,6],
-        [0,6,0,0,0,0,2,8,0],
-        [0,0,0,4,1,9,0,0,5],
-        [0,0,0,0,8,0,0,7,9]
+        [5,3,0,  0,7,0,  0,0,0],
+        [6,0,0,  1,9,5,  0,0,0],
+        [0,9,8,  0,0,0,  0,6,0],
+
+        [8,0,0,  0,6,0,  0,0,3],
+        [4,0,0,  8,0,3,  0,0,1],
+        [7,0,0,  0,2,0,  0,0,6],
+
+        [0,6,0,  0,0,0,  2,8,0],
+        [0,0,0,  4,1,9,  0,0,5],
+        [0,0,0,  0,8,0,  0,7,9]
     ]
     
-    # Example solver test
-    metrics = initialize_metrics()
-    solved = backtracking([row[:] for row in test_puzzle], metrics)
+    # List of algorithms to test
+    algorithms = {
+        "Backtracking": backtracking,
+        "MRV": backtracking_mrv,
+        "Forward Checking": backtracking_forward_checking,
+        "AC-3": backtracking_ac3,
+        "Hybrid (MRV+FC+AC3)": hybrid_solver
+    }
     
-    print("Solved:", solved)
-    print("Metrics:", metrics)
+    def validate_solution(board):
+        """Check if the solved board is valid"""
+        # Check rows
+        for row in board:
+            if sorted(row) != list(range(1,10)):
+                return False
+        
+        # Check columns
+        for col in range(9):
+            if sorted([board[row][col] for row in range(9)]) != list(range(1,10)):
+                return False
+        
+        # Check 3x3 subgrids
+        for box_row in range(0, 9, 3):
+            for box_col in range(0, 9, 3):
+                nums = []
+                for i in range(3):
+                    for j in range(3):
+                        nums.append(board[box_row + i][box_col + j])
+                if sorted(nums) != list(range(1,10)):
+                    return False
+        
+        return True
+
+    def test_single_puzzle(puzzle, puzzle_name="Test Puzzle"):
+        """Test all algorithms on a single puzzle"""
+        print(f"\n{'='*50}")
+        print(f"Testing Algorithms on: {puzzle_name}")
+        print(f"{'='*50}")
+        
+        results = []
+        
+        for algo_name, solver_func in algorithms.items():
+            # Create deep copy to avoid modifying original
+            board_copy = [row[:] for row in puzzle]
+            
+            # Initialize metrics
+            metrics = initialize_metrics()
+            metrics["algorithm"] = algo_name
+            
+            # Run solver
+            start_time = time.time()
+            solved = solver_func(board_copy, metrics, update_gui=None)
+            metrics["time"] = round(time.time() - start_time, 3)
+            
+            # Validate solution
+            metrics["valid"] = solved and validate_solution(board_copy)
+            
+            # Store results
+            results.append(metrics)
+            
+            # Print intermediate results
+            print(f"{algo_name}:")
+            print(f"  Solved: {solved}")
+            print(f"  Valid: {metrics['valid']}")
+            print(f"  Time: {metrics['time']}s")
+            print(f"  backtracking: {metrics['backtracking']}")
+            print(f"  Steps: {metrics['steps']}")
+            print("-"*40)
+        
+        # Print comparison table
+        print("\nAlgorithm Comparison:")
+        print("{:<20} {:<8} {:<10} {:<10} {:<10}".format(
+            "Algorithm", "Solved", "Valid", "Time (s)", "backtracking", "Steps"))
+        
+        for r in results:
+            print("{:<20} {:<8} {:<10} {:<10.3f} {:<10} {:<10}".format(
+                r["algorithm"], 
+                str(r["solved"]), 
+                str(r["valid"]),
+                r["time"],
+                r["backtracking"],
+                r["steps"]
+            ))
+        
+        return results
+
+    # ----------------------
+    # Run Tests
+    # ----------------------
+    
+    # Test with sample puzzle
+    test_results = test_single_puzzle(test_puzzle, "Sample Puzzle")
+    
+    # TODO: Add more puzzles from puzzles/ directory
+    """
+    # Example for loading puzzles from files
+    import os
+    puzzle_dir = "puzzles/"
+    
+    for filename in os.listdir(puzzle_dir):
+        if filename.endswith(".txt"):
+            puzzle = load_puzzle(os.path.join(puzzle_dir, filename))
+            test_single_puzzle(puzzle, filename)
+    """
+    
+    print("\nAll tests completed!")
