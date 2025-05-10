@@ -1,4 +1,4 @@
-from typing import List, Tuple, Optional, Dict
+from typing import List, Tuple, Optional, Dict, Set
 import time
 import pygame
 
@@ -188,84 +188,92 @@ def backtracking_forward_checking(board, metrics, update_gui=None):
 # AC-3 Algorithm Implementation
 
 
-
-def ac3(board: List[List[int]]) -> bool:
-   def ac3(board):
-       
-    # building a queue of arcs (cell pairs (x,y)) wher x and y shars row, col, or subgrid
-    queue = []
-    for i in range(9):
-        for j in range(9):
-            for k in range(9):
-                for l in range(9):
-                    if board[i][j] == 0 and board[k][l] == 0:
-                        same_row = (i == k)
-                        same_col = (j == l)
-                        same_subgrid = (3*(i//3) <= k < 3*(i//3 + 1)) and (3*(j//3) <= l < 3*(j//3 + 1))
-                        if same_row or same_col or same_subgrid:
-                            queue.append(((i, j), (k, l)))
+def get_peers(row: int, col: int) -> Set[Tuple[int, int]]:
+    """Get all cells that share a row, column, or subgrid with (row, col)."""
+    peers = set()
     
-    while queue:
-        (x1, y1), (x2, y2) = queue.pop(0)
-        if revise(board, x1, y1, x2, y2):
-            # check if cell has no valid values left
-            if board[x1][y1] == 0:
-                has_valid = False
-                for n in range(1, 10):
-                    if is_valid(board, x1, y1, n):
-                        has_valid = True
-                        break
-                if not has_valid:
-                    return False  
-            
-            # adding the neighbors again to queue
-            for neighbor in get_neighbors(x1, y1):
-                if board[neighbor[0]][neighbor[1]] == 0:
-                    queue.append((neighbor, (x1, y1)))
-    
-    return True
-
-
-def revise(board, x1, y1, x2, y2):
-    revised = False
-    for num in range(1, 10):
-        #testing all possible values for X1 then if the num is valid for x1
-        if is_valid(board, x1, y1, num):
-            valid_for_neighbor = False
-            # chicking for a valid value for x2
-            for n in range(1, 10):
-                if n != num and is_valid(board, x2, y2, n):
-                    valid_for_neighbor = True
-                    break
-            if not valid_for_neighbor:
-                board[x1][y1] = 0 # removing the num from x1 domain
-                revised = True
-    return revised
-
-
-def get_neighbors(row, col):
-    neighbors = []
-    # Same column
-    for i in range(9):
-        if i != row:
-            neighbors.append((i, col))
     # Same row
     for i in range(9):
         if i != col:
-            neighbors.append((row, i))
+            peers.add((row, i))
+    
+    # Same column
+    for i in range(9):
+        if i != row:
+            peers.add((i, col))
+    
     # Same subgrid
-    start_row = 3 * (row // 3)
-    start_col = 3 * (col // 3)
+    start_row, start_col = 3 * (row // 3), 3 * (col // 3)
     for i in range(3):
         for j in range(3):
-            r = start_row + i
-            c = start_col + j
+            r, c = start_row + i, start_col + j
             if r != row or c != col:
-                neighbors.append((r, c))
-    return neighbors
+                peers.add((r, c))
+    
+    return peers
+
+def revise(board: List[List[int]], xi: int, xj: int, yi: int, yj: int) -> bool:
+    """Revise the domain of cell (xi, xj) based on constraints with (yi, yj)."""
+    revised = False
+    
+    # Check all possible values for (xi, xj)
+    for num in range(1, 10):
+        if is_valid(board, xi, xj, num):
+            valid_found = False
+            
+            # Check if there's at least one valid value for (yi, yj) ≠ num
+            for n in range(1, 10):
+                if n != num and is_valid(board, yi, yj, n):
+                    valid_found = True
+                    break
+            
+            # If no valid value found for (yi, yj), remove num from (xi, xj)'s domain
+            if not valid_found:
+                board[xi][xj] = 0
+                revised = True
+    
+    return revised
+
+def ac3(board: List[List[int]]) -> bool:
+    """Apply Arc Consistency Algorithm (AC-3) to reduce the board's domains."""
+    queue = []
+    
+    # Initialize queue with all arcs (X, Y) where X and Y are peers
+    for row in range(9):
+        for col in range(9):
+            peers = get_peers(row, col)
+            for (p_row, p_col) in peers:
+                queue.append(((row, col), (p_row, p_col)))
+    
+    # Process each arc in the queue
+    while queue:
+        (xi, xj), (yi, yj) = queue.pop(0)
+        
+        if revise(board, xi, xj, yi, yj):
+            # If domain of (xi, xj) becomes empty, return failure
+            if board[xi][xj] == 0:
+                has_valid = False
+                for num in range(1, 10):
+                    if is_valid(board, xi, xj, num):
+                        has_valid = True
+                        break
+                if not has_valid:
+                    return False
+            
+            # Add all peers of (xi, xj) to queue for re-checking
+            for (neighbor_row, neighbor_col) in get_peers(xi, xj):
+                if (neighbor_row, neighbor_col) != (yi, yj):
+                    queue.append(((neighbor_row, neighbor_col), (xi, xj)))
+    
+    return True
 
 def backtracking_ac3(board: List[List[int]], metrics: Dict, update_gui=None) -> bool:
-    ac3(board)
+    """Solve Sudoku using backtracking after applying AC-3."""
+    # First apply AC-3 to reduce the search space
+    if not ac3(board):
+        return False
+    
+    # Proceed with regular backtracking
     return backtracking(board, metrics, update_gui)
 
 
@@ -275,15 +283,5 @@ def hybrid_solver(board: List[List[int]], metrics: Dict, update_gui=None) -> boo
     return backtracking_mrv(board, metrics, update_gui)
 
 
-# Metrics Collection System
-
-def initialize_metrics() -> Dict:
-    return {
-        "algorithm": "",
-        "time": 0,
-        "backtracking": 0,
-        "steps": 0,
-        "solved": False
-    }
 
                   
