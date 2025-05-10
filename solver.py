@@ -100,7 +100,7 @@ def backtracking_mrv(board: List[List[int]], metrics: Dict, update_gui=None) -> 
                 return True
 
             board[row][col] = 0
-            metrics["backtracks"] += 1
+            metrics["backtracking"] += 1
 
     return False
 
@@ -188,100 +188,240 @@ def backtracking_forward_checking(board, metrics, update_gui=None):
 # AC-3 Algorithm Implementation
 
 
-def get_peers(row: int, col: int) -> Set[Tuple[int, int]]:
-    """Get all cells that share a row, column, or subgrid with (row, col)."""
-    peers = set()
+# def get_peers(row: int, col: int) -> Set[Tuple[int, int]]:
+#     """Get all cells that share a row, column, or subgrid with (row, col)."""
+#     peers = set()
     
-    # Same row
-    for i in range(9):
-        if i != col:
-            peers.add((row, i))
+#     # Same row
+#     for i in range(9):
+#         if i != col:
+#             peers.add((row, i))
     
-    # Same column
-    for i in range(9):
-        if i != row:
-            peers.add((i, col))
+#     # Same column
+#     for i in range(9):
+#         if i != row:
+#             peers.add((i, col))
     
-    # Same subgrid
-    start_row, start_col = 3 * (row // 3), 3 * (col // 3)
-    for i in range(3):
-        for j in range(3):
-            r, c = start_row + i, start_col + j
-            if r != row or c != col:
-                peers.add((r, c))
+#     # Same subgrid
+#     start_row, start_col = 3 * (row // 3), 3 * (col // 3)
+#     for i in range(3):
+#         for j in range(3):
+#             r, c = start_row + i, start_col + j
+#             if r != row or c != col:
+#                 peers.add((r, c))
     
-    return peers
+#     return peers
 
-def revise(board: List[List[int]], xi: int, xj: int, yi: int, yj: int) -> bool:
-    """Revise the domain of cell (xi, xj) based on constraints with (yi, yj)."""
-    revised = False
+# def revise(board: List[List[int]], xi: int, xj: int, yi: int, yj: int) -> bool:
+#     """Revise the domain of cell (xi, xj) based on constraints with (yi, yj)."""
+#     revised = False
     
-    # Check all possible values for (xi, xj)
-    for num in range(1, 10):
-        if is_valid(board, xi, xj, num):
-            valid_found = False
+#     # Check all possible values for (xi, xj)
+#     for num in range(1, 10):
+#         if is_valid(board, xi, xj, num):
+#             valid_found = False
             
-            # Check if there's at least one valid value for (yi, yj) ≠ num
-            for n in range(1, 10):
-                if n != num and is_valid(board, yi, yj, n):
-                    valid_found = True
-                    break
+#             # Check if there's at least one valid value for (yi, yj) ≠ num
+#             for n in range(1, 10):
+#                 if n != num and is_valid(board, yi, yj, n):
+#                     valid_found = True
+#                     break
             
-            # If no valid value found for (yi, yj), remove num from (xi, xj)'s domain
-            if not valid_found:
-                board[xi][xj] = 0
-                revised = True
+#             # If no valid value found for (yi, yj), remove num from (xi, xj)'s domain
+#             if not valid_found:
+#                 board[xi][xj] = 0
+#                 revised = True
     
-    return revised
+#     return revised
 
-def ac3(board: List[List[int]]) -> bool:
-    """Apply Arc Consistency Algorithm (AC-3) to reduce the board's domains."""
-    queue = []
+# def ac3(board: List[List[int]]) -> bool:
+#     """Apply Arc Consistency Algorithm (AC-3) to reduce the board's domains."""
+#     queue = []
     
-    # Initialize queue with all arcs (X, Y) where X and Y are peers
-    for row in range(9):
-        for col in range(9):
-            peers = get_peers(row, col)
-            for (p_row, p_col) in peers:
-                queue.append(((row, col), (p_row, p_col)))
+#     # Initialize queue with all arcs (X, Y) where X and Y are peers
+#     for row in range(9):
+#         for col in range(9):
+#             peers = get_peers(row, col)
+#             for (p_row, p_col) in peers:
+#                 queue.append(((row, col), (p_row, p_col)))
     
-    # Process each arc in the queue
-    while queue:
-        (xi, xj), (yi, yj) = queue.pop(0)
+#     # Process each arc in the queue
+#     while queue:
+#         (xi, xj), (yi, yj) = queue.pop(0)
         
-        if revise(board, xi, xj, yi, yj):
-            # If domain of (xi, xj) becomes empty, return failure
-            if board[xi][xj] == 0:
-                has_valid = False
-                for num in range(1, 10):
-                    if is_valid(board, xi, xj, num):
-                        has_valid = True
-                        break
-                if not has_valid:
-                    return False
+#         if revise(board, xi, xj, yi, yj):
+#             # If domain of (xi, xj) becomes empty, return failure
+#             if board[xi][xj] == 0:
+#                 has_valid = False
+#                 for num in range(1, 10):
+#                     if is_valid(board, xi, xj, num):
+#                         has_valid = True
+#                         break
+#                 if not has_valid:
+#                     return False
             
-            # Add all peers of (xi, xj) to queue for re-checking
-            for (neighbor_row, neighbor_col) in get_peers(xi, xj):
-                if (neighbor_row, neighbor_col) != (yi, yj):
-                    queue.append(((neighbor_row, neighbor_col), (xi, xj)))
+#             # Add all peers of (xi, xj) to queue for re-checking
+#             for (neighbor_row, neighbor_col) in get_peers(xi, xj):
+#                 if (neighbor_row, neighbor_col) != (yi, yj):
+#                     queue.append(((neighbor_row, neighbor_col), (xi, xj)))
     
-    return True
+#     return True
 
-def backtracking_ac3(board: List[List[int]], metrics: Dict, update_gui=None) -> bool:
-    """Solve Sudoku using backtracking after applying AC-3."""
-    # First apply AC-3 to reduce the search space
-    if not ac3(board):
-        return False
+# def backtracking_ac3(board: List[List[int]], metrics: Dict, update_gui=None) -> bool:
+#     """Solve Sudoku using backtracking after applying AC-3."""
+#     # First apply AC-3 to reduce the search space
+#     if not ac3(board):
+#         return False
     
-    # Proceed with regular backtracking
-    return backtracking(board, metrics, update_gui)
+#     # Proceed with regular backtracking
+#     return backtracking(board, metrics, update_gui)
 
 
 # Hybrid Algorithm Implementation
+
+
+def backtracking_mrv_forward_checking(
+    board: List[List[int]], 
+    metrics: Dict, 
+    update_gui=None
+) -> bool:
+    """Solve Sudoku using backtracking with MRV and forward checking."""
+    empty = find_mrv(board)
+    if not empty:
+        return True  # No empty cells means solution is found
+    
+    row, col = empty
+    
+    for num in range(1, 10):
+        if is_valid(board, row, col, num):
+            # Apply forward checking
+            if not forward_checking(board, row, col, num):
+                metrics["pruned"] = metrics.get("pruned", 0) + 1
+                continue  # Skip this number if it leads to dead end
+            
+            # Assign the number and update metrics
+            board[row][col] = num
+            metrics["steps"] = metrics.get("steps", 0) + 1
+            
+            # Visual update if GUI is active
+            if update_gui:
+                update_gui(row, col, num)
+                pygame.time.delay(20)
+            
+            # Recursively solve the rest of the board
+            if backtracking_mrv_forward_checking(board, metrics, update_gui):
+                return True
+            
+            # Backtrack if solution not found
+            board[row][col] = 0
+            metrics["backtracking"] = metrics.get("backtracking", 0) + 1
+    return False 
+
 def hybrid_solver(board: List[List[int]], metrics: Dict, update_gui=None) -> bool:
-    ac3(board)
-    return backtracking_mrv(board, metrics, update_gui)
+    return backtracking_mrv_forward_checking(board, metrics, update_gui)
 
 
 
+def initialize_metrics() -> Dict:
+    return {
+        "algorithm": "",
+        "time": 0,
+        "backtracking": 0,
+        "steps": 0,
+        "solved": False
+    }
+
+                  
+if __name__ == "__main__":
+    
+    test_puzzle = [
+    [0, 0, 0, 6, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 5, 0, 0],
+    [0, 6, 8, 2, 0, 0, 0, 0, 4],
+
+    [0, 0, 0, 0, 0, 4, 6, 7, 0],
+    [0, 0, 0, 0, 1, 0, 0, 3, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0],
+
+    [0, 9, 0, 0, 0, 0, 0, 0, 0],
+    [8, 0, 0, 0, 0, 0, 0, 0, 7],
+    [0, 0, 3, 0, 0, 9, 0, 0, 2]
+]
+    
+    algorithms = {
+        "Backtracking": backtracking,
+        "MRV": backtracking_mrv,
+        "Forward Checking": backtracking_forward_checking,
+        "Hybrid (MRV+FC)": hybrid_solver
+    }
+    
+    def validate_solution(board):
+        for row in board:
+            if sorted(row) != list(range(1,10)):
+                return False
+        
+        for col in range(9):
+            if sorted([board[row][col] for row in range(9)]) != list(range(1,10)):
+                return False
+        
+        for box_row in range(0, 9, 3):
+            for box_col in range(0, 9, 3):
+                nums = []
+                for i in range(3):
+                    for j in range(3):
+                        nums.append(board[box_row + i][box_col + j])
+                if sorted(nums) != list(range(1,10)):
+                    return False
+        
+        return True
+
+    def test_single_puzzle(puzzle, puzzle_name="Test Puzzle"):
+        print(f"\n{'='*50}")
+        print(f"Testing Algorithms on: {puzzle_name}")
+        print(f"{'='*50}")
+        
+        results = []
+        
+        for algo_name, solver_func in algorithms.items():
+            board_copy = [row[:] for row in puzzle]
+            
+            metrics = initialize_metrics()
+            metrics["algorithm"] = algo_name
+            
+            start_time = time.time()
+            solved = solver_func(board_copy, metrics, update_gui=None)
+            metrics["time"] = round(time.time() - start_time, 3)
+            
+            metrics["valid"] = solved and validate_solution(board_copy)
+            
+     
+            results.append(metrics)
+            
+            print(f"{algo_name}:")
+            print(f"  Solved: {solved}")
+            print(f"  Valid: {metrics['valid']}")
+            print(f"  Time: {metrics['time']}s")
+            print(f"  backtracking: {metrics['backtracking']}")
+            print(f"  Steps: {metrics['steps']}")
+            print("-"*40)
+        
+        print("\nAlgorithm Comparison:")
+        print("{:<20} {:<8} {:<10} {:<10} {:<10}".format(
+            "Algorithm", "Solved", "Valid", "Time (s)", "backtracking", "Steps"))
+        
+        for r in results:
+            print("{:<20} {:<8} {:<10} {:<10.3f} {:<10} {:<10}".format(
+                r["algorithm"], 
+                str(r["solved"]), 
+                str(r["valid"]),
+                r["time"],
+                r["backtracking"],
+                r["steps"]
+            ))
+        
+        return results
+
+    test_results = test_single_puzzle(test_puzzle, "Sample Puzzle")
+    
+    print("\nAll tests completed!")
                   
