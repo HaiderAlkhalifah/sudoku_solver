@@ -5,7 +5,7 @@ import sys
 # 1. Initialize Pygame Settings
 # ------------------------------
 
-WIDTH, HEIGHT = 540, 620  # 540x540 grid + 140px space for buttons/info
+WIDTH, HEIGHT = 550, 680  # 540x540 grid + 140px space for buttons/info
 ROWS, COLS = 9, 9 
 CELL_SIZE = WIDTH // COLS
 
@@ -38,6 +38,7 @@ board = [row[:] for row in original_board]  # Create a deep copy
 fixed_cells = [[board[i][j] != 0 for j in range(COLS)] for i in range(ROWS)]
 status_message = "Select a cell and use number keys to input values"
 active_algorithm = None
+button_name_mapping = {}
 
 # ------------------------------
 # 2. Drawing Functions
@@ -136,8 +137,9 @@ def handle_mouse_click(pos, buttons):
                 reset_board()
                 status_message = "Board reset to initial state"
             else:
+                algorithm_name = button_name_mapping[name]
                 active_algorithm = name
-                status_message = f"Algorithm: {name} (would be executed from external module)"
+                status_message = f"Algorithm: {name} selected"
             return
 
 def handle_key_press(key):
@@ -191,17 +193,35 @@ def update_cell(row, col, value, delay=20):
 
 def get_button_rects():
     """Return dictionary of button positions and sizes."""
-    names = ["Backtrack", "MRV", "FW", "MRV+FW", "AC-3", "Hybrid", "Reset"]
+    # Map pretty names to actual algorithm names
+    global button_name_mapping
+    button_name_mapping = {
+        "Backtracking": "backtracking",
+        "MRV": "backtracking_mrv",
+        "Forward Checking": "backtracking_forward_checking",
+        "AC-3": "backtracking_ac3",
+        "Hybrid": "hybrid_solver",
+        "Reset": "Reset"
+    }
+    
+    names = list(button_name_mapping.keys())
     buttons = {}
     
-    # Use 7 buttons in a single row layout
-    button_width = 70
+    # Use 2 rows of 3 buttons each
+    button_width = 170
     button_height = 35
-    margin = 5
+    margin = 10
     
-    # First row (all 7 buttons in a row)
+    # First row (3 buttons)
     y = WIDTH + 25
-    for i, name in enumerate(names):
+    for i, name in enumerate(names[:3]):
+        x = margin + i * (button_width + margin)
+        rect = pygame.Rect(x, y, button_width, button_height)
+        buttons[name] = rect
+    
+    # Second row (3 buttons)
+    y = WIDTH + 25 + button_height + margin
+    for i, name in enumerate(names[3:]):
         x = margin + i * (button_width + margin)
         rect = pygame.Rect(x, y, button_width, button_height)
         buttons[name] = rect
@@ -258,5 +278,22 @@ def visualize_solution_step(row, col, value):
     This function would be called by the algorithm implementations.
     """
     update_cell(row, col, value)
+
+# Function to execute the selected algorithm
+def execute_algorithm():
+    """
+    This function would be called to execute the currently selected algorithm.
+    It returns the name of the algorithm to be called externally.
+    """
+    if active_algorithm is None:
+        return None
+    
+    algorithm_name = button_name_mapping[active_algorithm]
+    return algorithm_name
+
+# Function to get the current board state
+def get_current_board():
+    """Returns the current state of the board."""
+    return board
 
 gameInitialize()
