@@ -1,117 +1,262 @@
 import pygame
+import sys
 
 # ------------------------------
 # 1. Initialize Pygame Settings
 # ------------------------------
 
-WIDTH, HEIGHT = 540, 600  # 540x540 grid + 60px space for buttons/info
+WIDTH, HEIGHT = 540, 620  # 540x540 grid + 140px space for buttons/info
 ROWS, COLS = 9, 9 
 CELL_SIZE = WIDTH // COLS
 
 # Colors
 BLACK = (0, 0, 0)
-GRAY = (150, 150, 150)
-RED = (255, 0, 0)
+WHITE = (255, 255, 255)
+DARK_BG = (30, 30, 40)
+DARKER_BG = (20, 20, 30)
+GRAY = (100, 100, 120)
+LIGHT_GRAY = (140, 140, 160)
+RED = (255, 80, 80)
+GREEN = (80, 220, 100)
+BLUE = (80, 170, 255)
+HIGHLIGHT = (60, 60, 80)
 
-def gameInitialize():
-    pygame.init()
-
-    screen = pygame.display.set_mode((WIDTH, HEIGHT))
-    pygame.display.set_caption("Sudoku_CSP")
-
-    number_font = pygame.font.SysFont("arial", 40)
-    button_font = pygame.font.SysFont("arial", 30)
-    clock = pygame.time.Clock()
-
-    running = True
-    while running:
-        screen.fill(BLACK)
-        draw_board(screen)
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-
-            # TODO: Handle input here
-
-        pygame.display.flip()
-        clock.tick(60)
+# Game state
+selected_cell = None
+original_board = [
+    [0, 0, 0, 0, 7, 0, 0, 0, 9],
+    [4, 0, 0, 0, 0, 0, 1, 0, 0],
+    [0, 8, 0, 9, 0, 0, 0, 3, 0],
+    [0, 0, 3, 0, 0, 4, 0, 7, 0],
+    [0, 7, 0, 0, 0, 0, 0, 5, 0],
+    [0, 6, 0, 3, 0, 0, 4, 0, 0],
+    [0, 1, 0, 0, 0, 5, 0, 9, 0],
+    [0, 0, 2, 0, 0, 0, 0, 0, 3],
+    [3, 0, 0, 0, 1, 0, 0, 0, 0]
+]
+board = [row[:] for row in original_board]  # Create a deep copy
+fixed_cells = [[board[i][j] != 0 for j in range(COLS)] for i in range(ROWS)]
+status_message = "Select a cell and use number keys to input values"
+active_algorithm = None
 
 # ------------------------------
 # 2. Drawing Functions
 # ------------------------------
 
 def draw_board(screen):
+    # Fill background
+    screen.fill(DARK_BG, (0, 0, WIDTH, WIDTH))
+    
+    # Draw grid lines
     for i in range(ROWS + 1):
         thickness = 4 if i % 3 == 0 else 1
         pygame.draw.line(screen, GRAY, (0, i * CELL_SIZE), (WIDTH, i * CELL_SIZE), thickness)
         pygame.draw.line(screen, GRAY, (i * CELL_SIZE, 0), (i * CELL_SIZE, WIDTH), thickness)
 
-    """
-    Draw the Sudoku grid and numbers.
-    TODO:
-    1. Draw 9x9 grid with thick lines for 3x3 subgrids
-    2. Render numbers from the board
-    3. Highlight selected cell with a colored border
-    4. Display performance metrics at the bottom
-    """
-    pass
+    # Highlight selected cell
+    if selected_cell:
+        row, col = selected_cell
+        pygame.draw.rect(screen, HIGHLIGHT, (col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE))
+        
+        # Highlight same row and column lightly
+        for i in range(9):
+            if i != col:
+                pygame.draw.rect(screen, DARKER_BG, (i * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE))
+            if i != row:
+                pygame.draw.rect(screen, DARKER_BG, (col * CELL_SIZE, i * CELL_SIZE, CELL_SIZE, CELL_SIZE))
+        
+        # Highlight 3x3 box
+        box_row, box_col = 3 * (row // 3), 3 * (col // 3)
+        for i in range(box_row, box_row + 3):
+            for j in range(box_col, box_col + 3):
+                if i != row or j != col:
+                    pygame.draw.rect(screen, DARKER_BG, (j * CELL_SIZE, i * CELL_SIZE, CELL_SIZE, CELL_SIZE))
+
+    # Draw numbers
+    for i in range(ROWS):
+        for j in range(COLS):
+            num = board[i][j]
+            if num != 0:
+                color = WHITE if fixed_cells[i][j] else BLUE
+                text = number_font.render(str(num), True, color)
+                text_rect = text.get_rect(center=(j * CELL_SIZE + CELL_SIZE // 2, i * CELL_SIZE + CELL_SIZE // 2))
+                screen.blit(text, text_rect)
+
+    # Redraw grid lines on top
+    for i in range(ROWS + 1):
+        thickness = 4 if i % 3 == 0 else 1
+        pygame.draw.line(screen, GRAY, (0, i * CELL_SIZE), (WIDTH, i * CELL_SIZE), thickness)
+        pygame.draw.line(screen, GRAY, (i * CELL_SIZE, 0), (i * CELL_SIZE, WIDTH), thickness)
 
 def draw_buttons(screen, buttons):
-    """
-    Draw algorithm selection buttons.
-    TODO:
-    1. Create buttons for each algorithm:
-       - Backtracking
-       - MRV
-       - Forward Checking
-       - AC-3
-       - Hybrid
-       - Reset
-    2. Add hover/click visual feedback
-    """
-    pass
+    # Draw status bar background
+    pygame.draw.rect(screen, DARKER_BG, (0, WIDTH, WIDTH, HEIGHT - WIDTH))
+    
+    # Draw status message
+    status_text = status_font.render(status_message, True, LIGHT_GRAY)
+    screen.blit(status_text, (10, WIDTH + 5))
+    
+    # Draw buttons
+    for name, rect in buttons.items():
+        # Change button color if active
+        if name == active_algorithm:
+            button_color = GREEN
+        else:
+            button_color = GRAY
+            
+        pygame.draw.rect(screen, button_color, rect)
+        pygame.draw.rect(screen, LIGHT_GRAY, rect, 2)  # Button border
+        
+        # Use a smaller font for button text
+        text = button_font.render(name, True, BLACK if name == active_algorithm else WHITE)
+        text_rect = text.get_rect(center=rect.center)
+        screen.blit(text, text_rect)
 
 # ------------------------------
 # 3. Interaction Handling
 # ------------------------------
 
 def handle_mouse_click(pos, buttons):
-    """
-    Determine which button or cell was clicked.
-    TODO:
-    1. Map mouse position to grid cell coordinates
-    2. Check if click was inside any button area
-    """
-    pass
+    global selected_cell, active_algorithm, status_message
+    
+    x, y = pos
+    
+    # Check if click is on the board
+    if y < WIDTH:
+        col = x // CELL_SIZE
+        row = y // CELL_SIZE
+        selected_cell = (row, col)
+        status_message = f"Selected cell: {row+1},{col+1}"
+        return
+    
+    # Check if click is on a button
+    for name, rect in buttons.items():
+        if rect.collidepoint(pos):
+            if name == "Reset":
+                reset_board()
+                status_message = "Board reset to initial state"
+            else:
+                active_algorithm = name
+                status_message = f"Algorithm: {name} (would be executed from external module)"
+            return
+
+def handle_key_press(key):
+    global board, status_message
+    
+    if selected_cell is None:
+        return
+        
+    row, col = selected_cell
+    
+    # Don't modify fixed cells
+    if fixed_cells[row][col]:
+        status_message = "Cannot modify fixed cells"
+        return
+        
+    # Handle number inputs (1-9)
+    if pygame.K_1 <= key <= pygame.K_9:
+        number = key - pygame.K_0  # Convert key code to number
+        board[row][col] = number
+        status_message = f"Entered {number} at {row+1},{col+1}"
+    
+    # Delete/backspace/0 clears the cell
+    elif key in (pygame.K_DELETE, pygame.K_BACKSPACE, pygame.K_0):
+        board[row][col] = 0
+        status_message = f"Cleared cell {row+1},{col+1}"
 
 # ------------------------------
 # 4. Animation & Updates
 # ------------------------------
 
-def update_gui(row, col):
-    """
-    Animate the solving process.
-    TODO:
-    1. Highlight current cell being processed
-    2. Add small delay for visibility
-    3. Refresh display
-    """
-    pass
+def update_cell(row, col, value, delay=20):
+    """Update a specific cell with animation"""
+    global board
+    board[row][col] = value
+    
+    # Draw the updated state
+    screen.fill(DARKER_BG)
+    draw_board(screen)
+    draw_buttons(screen, get_button_rects())
+    
+    # Highlight the updated cell
+    if not fixed_cells[row][col]:
+        pygame.draw.rect(screen, GREEN, (col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE), 3)
+    
+    pygame.display.flip()
+    pygame.time.delay(delay)
 
 # ------------------------------
 # 5. Utility Functions
 # ------------------------------
 
 def get_button_rects():
-    """
-    Return dictionary of button positions and sizes.
-    TODO: Define precise coordinates for each algorithm button
-    """
-    pass
+    """Return dictionary of button positions and sizes."""
+    names = ["Backtrack", "MRV", "FW", "MRV+FW", "AC-3", "Hybrid", "Reset"]
+    buttons = {}
+    
+    # Use 7 buttons in a single row layout
+    button_width = 70
+    button_height = 35
+    margin = 5
+    
+    # First row (all 7 buttons in a row)
+    y = WIDTH + 25
+    for i, name in enumerate(names):
+        x = margin + i * (button_width + margin)
+        rect = pygame.Rect(x, y, button_width, button_height)
+        buttons[name] = rect
+        
+    return buttons
+
+def reset_board():
+    """Reset the board to its original state"""
+    global board, selected_cell, active_algorithm
+    board = [row[:] for row in original_board]
+    selected_cell = None
+    active_algorithm = None
 
 def gameQuit():
     pygame.quit()
     sys.exit()
+
+def gameInitialize():
+    pygame.init()
+
+    global screen, number_font, button_font, status_font
+    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    pygame.display.set_caption("Sudoku Solver - Dark Mode")
+
+    number_font = pygame.font.SysFont("arial", 36, bold=True)
+    button_font = pygame.font.SysFont("arial", 14, bold=True)
+    status_font = pygame.font.SysFont("arial", 14)
+    clock = pygame.time.Clock()
+    buttons = get_button_rects()
+
+    running = True
+    while running:
+        screen.fill(DARKER_BG)
+        draw_board(screen)
+        draw_buttons(screen, buttons)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                handle_mouse_click(event.pos, buttons)
+            elif event.type == pygame.KEYDOWN:
+                handle_key_press(event.key)
+
+        pygame.display.flip()
+        clock.tick(60)
+    
+    gameQuit()
+
+# This function would be called by external algorithm implementations
+def visualize_solution_step(row, col, value):
+    """
+    Visualize a single step of the solution process.
+    This function would be called by the algorithm implementations.
+    """
+    update_cell(row, col, value)
 
 gameInitialize()
